@@ -1,12 +1,14 @@
-from rest_framework import serializers
-from django.contrib.auth.hashers import make_password
-from django.contrib.auth.password_validation import validate_password as django_validate_password
-from django.core.validators import validate_email as django_validate_email
-from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import *
+from rest_framework import serializers # type: ignore
+from django.contrib.auth.hashers import make_password # type: ignore
+from django.contrib.auth.password_validation import validate_password as django_validate_password # type: ignore
+from django.core.validators import validate_email as django_validate_email # type: ignore
+from django.core.exceptions import ValidationError as DjangoValidationError # type: ignore
 import re
 
-class UsuarioSerializer(serializers.ModelSerializer):
+# Importamos absolutamente todo de tus modelos
+from echo.models import *
+
+class RegistroUsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = '__all__'
@@ -21,6 +23,15 @@ class UsuarioSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("El nombre de usuario solo puede contener letras, números y guiones bajos (_), sin espacios.")
         return value
 
+    def validate_descripcion(self, value):
+        if value:
+            if len(value) > 250:
+                raise serializers.ValidationError("La descripción no puede superar los 250 caracteres.")
+            patron = r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$'
+            if not re.match(patron, value):
+                raise serializers.ValidationError("La descripción solo puede contener letras y números.")
+        return value
+
     def validate_telefono(self, value):
         if value: 
             if not value.isdigit(): 
@@ -30,25 +41,25 @@ class UsuarioSerializer(serializers.ModelSerializer):
         return value
 
     def validate_password(self, value):
-
         try:
             django_validate_password(value)
         except DjangoValidationError as e:
-           
             raise serializers.ValidationError(list(e.messages))
         return value
 
     def validate_email(self, value):
         email_limpio = value.lower().strip()
-        
         try:
             django_validate_email(email_limpio)
         except DjangoValidationError:
             raise serializers.ValidationError("El correo electrónico no tiene un formato válido.")
-            
         return email_limpio
 
     def validate(self, data):
+        # PROTECCIÓN GLOBAL CONTRA SCRIPTS (XSS)
+        for campo, valor in data.items():
+            if isinstance(valor, str) and ('<' in valor or '>' in valor):
+                raise serializers.ValidationError({campo: "No se permiten caracteres especiales como < o > por seguridad."})
 
         if 'nombre' in data and data['nombre']:
             data['nombre'] = data['nombre'].strip()
@@ -98,8 +109,3 @@ class UsuarioSerializer(serializers.ModelSerializer):
         if 'password' in validated_data:
             validated_data['password'] = make_password(validated_data['password'])
         return super().update(instance, validated_data)
-
-
-class LoginSerializer(serializers.Serializer):
-    identificador = serializers.CharField(required=True) # Puede ser email o nombre_usuario
-    password = serializers.CharField(required=True, write_only=True)
