@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv #type:ignore
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,7 +22,8 @@ load_dotenv()
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-wzwzz+v%m$_nyqyydyd2&ld)kt5ezap&spcj+#w95nj&j4^3$!'
+SECRET_KEY = os.getenv('SECRET_KEY')
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -96,6 +97,8 @@ DATABASES = {
     }
 }
 
+"""sino arranca postgrest no funciona o comenta el database actual y descomenta el otro para usar el de db.sqlite3"""
+
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
@@ -145,3 +148,16 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+
+import cloudinary #type:ignore
+import cloudinary.uploader #type:ignore
+import cloudinary.api #type:ignore
+import os
+
+cloudinary.config( 
+  cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
+  api_key = os.environ.get('CLOUDINARY_API_KEY'), 
+  api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
+  secure = True
+)

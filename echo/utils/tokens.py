@@ -11,5 +11,5 @@ def generar_token_jwt(usuario):
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1), 
         'iat': datetime.datetime.utcnow()
     }
-    # Retornamos el token ya firmado con la llave secreta del proyecto
+
     return jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')

@@ -5,10 +5,12 @@ from django.core.validators import validate_email as django_validate_email # typ
 from django.core.exceptions import ValidationError as DjangoValidationError # type: ignore
 import re
 
-# Importamos absolutamente todo de tus modelos
 from echo.models import *
 
 class RegistroUsuarioSerializer(serializers.ModelSerializer):
+
+    confirmar_password = serializers.CharField(write_only=True, required=False)
+
     class Meta:
         model = Usuario
         fields = '__all__'
@@ -56,47 +58,56 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         return email_limpio
 
     def validate(self, data):
-        # PROTECCIÓN GLOBAL CONTRA SCRIPTS (XSS)
+
+        if 'password' in data:
+            if 'confirmar_password' not in data:
+                raise serializers.ValidationError({"confirmar_password": "Debes confirmar la contraseña."})
+            if data['password'] != data['confirmar_password']:
+                raise serializers.ValidationError({"password": "Las contraseñas no coinciden."})
+
+            data.pop('confirmar_password') 
+
         for campo, valor in data.items():
             if isinstance(valor, str) and ('<' in valor or '>' in valor):
                 raise serializers.ValidationError({campo: "No se permiten caracteres especiales como < o > por seguridad."})
 
-        if 'nombre' in data and data['nombre']:
-            data['nombre'] = data['nombre'].strip()
-        if 'apellido' in data and data['apellido']:
-            data['apellido'] = data['apellido'].strip()
 
         tipo = data.get('tipo_usuario', getattr(self.instance, 'tipo_usuario', None))
+        
+
+        if 'nombre' in data: data['nombre'] = data['nombre'].strip()
+        if 'apellido' in data: data['apellido'] = data['apellido'].strip()
 
         if tipo == 'empresarial':
             errores = {}
-            if not data.get('nombre_negocio') and not getattr(self.instance, 'nombre_negocio', None):
-                errores['nombre_negocio'] = "El nombre del negocio es obligatorio para perfiles empresariales."
-            if not data.get('telefono') and not getattr(self.instance, 'telefono', None):
-                errores['telefono'] = "El teléfono es obligatorio para perfiles empresariales."
-            if not data.get('direccion') and not getattr(self.instance, 'direccion', None):
-                errores['direccion'] = "La dirección es obligatoria para perfiles empresariales."
+
+            nombre_negocio = data.get('nombre_negocio', getattr(self.instance, 'nombre_negocio', None))
+            telefono = data.get('telefono', getattr(self.instance, 'telefono', None))
+            direccion = data.get('direccion', getattr(self.instance, 'direccion', None))
+
+            if not nombre_negocio: errores['nombre_negocio'] = "Obligatorio para empresas."
+            if not telefono: errores['telefono'] = "Obligatorio para empresas."
+            if not direccion: errores['direccion'] = "Obligatorio para empresas."
             
-            if errores:
-                raise serializers.ValidationError(errores)
+            if errores: raise serializers.ValidationError(errores)
 
             data['nombre'] = None
             data['apellido'] = None
 
-        if tipo == 'normal':
+        elif tipo == 'normal':
             errores = {}
-            if not data.get('nombre') and not getattr(self.instance, 'nombre', None):
-                errores['nombre'] = "El nombre es obligatorio para ciudadanos."
-            if not data.get('apellido') and not getattr(self.instance, 'apellido', None):
-                errores['apellido'] = "El apellido es obligatorio para ciudadanos."
+            nombre = data.get('nombre', getattr(self.instance, 'nombre', None))
+            apellido = data.get('apellido', getattr(self.instance, 'apellido', None))
+
+            if not nombre: errores['nombre'] = "Obligatorio para ciudadanos."
+            if not apellido: errores['apellido'] = "Obligatorio para ciudadanos."
             
-            if errores:
-                raise serializers.ValidationError(errores)
+            if errores: raise serializers.ValidationError(errores)
 
             data['nombre_negocio'] = None
             data['direccion'] = None
 
-        if tipo not in ['normal', 'empresarial']:
+        else:
             raise serializers.ValidationError({"tipo_usuario": "Tipo de usuario no válido."})
 
         return data

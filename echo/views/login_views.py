@@ -4,7 +4,6 @@ from rest_framework.views import APIView # type: ignore
 from rest_framework.response import Response # type: ignore
 from rest_framework import status # type: ignore
 
-# Importamos todo de modelos, serializadores de login y utilidades de tokens
 from echo.models import *
 from echo.serializers.login_serializers import *
 from echo.utils.tokens import *
@@ -30,7 +29,7 @@ class LoginAPIView(APIView):
             if not check_password(password, usuario.password):
                 return Response({"error": "Credenciales inválidas."}, status=status.HTTP_401_UNAUTHORIZED)
 
-            # Usamos el servicio externo para generar el token
+
             token = generar_token_jwt(usuario)
 
             return Response({
