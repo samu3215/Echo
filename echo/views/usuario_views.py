@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny # type: ignore
 from echo.models import *
 from echo.serializers.usuario_serializers import *
 from echo.utils.autenticacion import *
+from echo.utils.tokens import *
 
 class RegistroUsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.filter(activo=True)
@@ -33,11 +34,30 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        serializer = self.get_serializer(instance, data=request.data, partial=kwargs.pop('partial', False))
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer) 
+
+        nuevo_token = generar_token_jwt(instance)
+
+        return Response({
+            "mensaje": "Perfil actualizado con éxito",
+            "datos": serializer.data,
+            "token": nuevo_token
+        }, status=status.HTTP_200_OK)
+
     def destroy(self, request, *args, **kwargs):
+
         usuario = self.get_object()
         usuario.activo = False
         usuario.save()
+        
         return Response(
-            {"mensaje": "Usuario desactivado correctamente."}, 
-            status=status.HTTP_204_NO_CONTENT
+            {"mensaje": "Usuario eliminado correctamente."}, 
+            status=status.HTTP_200_OK
         )
+
+

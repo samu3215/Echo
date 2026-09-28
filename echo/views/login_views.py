@@ -21,13 +21,13 @@ class LoginAPIView(APIView):
                     Q(email=identificador) | Q(nombre_usuario=identificador)
                 )
             except Usuario.DoesNotExist:
-                return Response({"error": "Credenciales inválidas."}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({"error": "El usuario no existe."}, status=status.HTTP_401_UNAUTHORIZED)
 
             if not usuario.activo:
                 return Response({"error": "Esta cuenta ha sido desactivada."}, status=status.HTTP_403_FORBIDDEN)
 
             if not check_password(password, usuario.password):
-                return Response({"error": "Credenciales inválidas."}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({"error": "Datos incorrectos."}, status=status.HTTP_401_UNAUTHORIZED)
 
 
             token = generar_token_jwt(usuario)

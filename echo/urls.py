@@ -7,6 +7,7 @@ from .views.media_views import *
 
 router = DefaultRouter()
 router.register(r'usuarios', RegistroUsuarioViewSet, basename='usuario')
+#router.register(r'publicacion',)
 
 urlpatterns = [
     path('api/', include(router.urls)),

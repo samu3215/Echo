@@ -1,15 +1,18 @@
-import jwt
+import jwt #type:ignore
 import datetime
-from django.conf import settings
+from django.conf import settings #type:ignore
+
 
 def generar_token_jwt(usuario):
-    """Genera un JSON Web Token idéntico al estándar de Node.js"""
+
+    ahora = datetime.datetime.now(datetime.timezone.utc)
+
     payload = {
         'user_id': usuario.id,
         'nombre_usuario': usuario.nombre_usuario,
         'tipo_usuario': usuario.tipo_usuario,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1), 
-        'iat': datetime.datetime.utcnow()
+        'exp': ahora + datetime.timedelta(days=1), 
+        'iat': ahora
     }
 
     return jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
