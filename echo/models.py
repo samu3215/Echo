@@ -122,3 +122,40 @@ class Calificacion(models.Model):
             UniqueConstraint(fields=['usuario_califica', 'usuario_calificado'], name='calificacion_unica'),
             CheckConstraint(condition=~Q(usuario_califica=F('usuario_calificado')), name='evitar_autocalificacion')
         ]
+
+
+
+
+
+
+
+
+
+
+class Notificacion(models.Model):
+    TIPO_CHOICES = [
+        ('like', 'Like'),
+        ('comentario', 'Comentario'),
+        ('seguidor', 'Nuevo seguidor'),
+        ('calificacion', 'Nueva calificación'),
+    ]
+
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='notificaciones'
+    )
+
+    mensaje = models.CharField(max_length=255)
+
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES
+    )
+
+    leida = models.BooleanField(default=False)
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.mensaje
