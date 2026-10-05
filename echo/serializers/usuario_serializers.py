@@ -7,6 +7,21 @@ import re
 
 from echo.models import *
 
+
+class CalificacionSerializer(serializers.ModelSerializer):
+    usuario = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Calificacion
+        fields = ['id', 'puntuacion', 'descripcion', 'fecha_creacion', 'usuario']
+
+    def get_usuario(self, obj):
+        return {
+            'nombre_usuario': obj.usuario_califica.nombre_usuario,
+            'foto_perfil': obj.usuario_califica.foto_perfil,
+        }
+
+
 class RegistroUsuarioSerializer(serializers.ModelSerializer):
 
     confirmar_password = serializers.CharField(write_only=True, required=False)
@@ -120,3 +135,23 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         if 'password' in validated_data:
             validated_data['password'] = make_password(validated_data['password'])
         return super().update(instance, validated_data)
+
+
+class UsuarioDetalleSerializer(serializers.ModelSerializer):
+    resenas = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Usuario
+        fields = [
+            'id', 'email', 'nombre_usuario', 'password', 'tipo_usuario',
+            'fecha_creacion', 'activo', 'foto_perfil', 'nombre', 'apellido',
+            'nombre_negocio', 'descripcion', 'direccion', 'telefono', 'resenas'
+        ]
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+        read_only_fields = ['activo', 'fecha_creacion']
+
+    def get_resenas(self, obj):
+        calificaciones = obj.calificaciones_recibidas.select_related('usuario_califica').order_by('-fecha_creacion', '-id')
+        return CalificacionSerializer(calificaciones, many=True).data

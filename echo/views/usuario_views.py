@@ -14,6 +14,11 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
 
     authentication_classes = [AutenticacionJWT]
 
+    def get_serializer_class(self):
+        if self.action in ['retrieve', 'list']:
+            return UsuarioDetalleSerializer
+        return RegistroUsuarioSerializer
+
     def get_permissions(self):
        
         if self.action in ['create', 'list', 'retrieve']:
