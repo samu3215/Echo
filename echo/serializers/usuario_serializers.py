@@ -3,6 +3,7 @@ from django.contrib.auth.hashers import make_password # type: ignore
 from django.contrib.auth.password_validation import validate_password as django_validate_password # type: ignore
 from django.core.validators import validate_email as django_validate_email # type: ignore
 from django.core.exceptions import ValidationError as DjangoValidationError # type: ignore
+from django.utils.html import strip_tags 
 import re
 
 from echo.models import *
@@ -29,9 +30,7 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         if value:
             if len(value) > 250:
                 raise serializers.ValidationError("La descripción no puede superar los 250 caracteres.")
-            patron = r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$'
-            if not re.match(patron, value):
-                raise serializers.ValidationError("La descripción solo puede contener letras y números.")
+            # Eliminamos el 'patron' estricto. Ahora el usuario puede usar comas, puntos, y signos como >, <, !
         return value
 
     def validate_telefono(self, value):
@@ -68,13 +67,11 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
             data.pop('confirmar_password') 
 
         for campo, valor in data.items():
-            if isinstance(valor, str) and ('<' in valor or '>' in valor):
-                raise serializers.ValidationError({campo: "No se permiten caracteres especiales como < o > por seguridad."})
-
+            if isinstance(valor, str):
+                data[campo] = strip_tags(valor)
 
         tipo = data.get('tipo_usuario', getattr(self.instance, 'tipo_usuario', None))
         
-
         if 'nombre' in data: data['nombre'] = data['nombre'].strip()
         if 'apellido' in data: data['apellido'] = data['apellido'].strip()
 
