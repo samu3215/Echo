@@ -139,13 +139,17 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
 
 class UsuarioDetalleSerializer(serializers.ModelSerializer):
     resenas = serializers.SerializerMethodField()
+    seguidores_count = serializers.SerializerMethodField()
+    seguidos_count = serializers.SerializerMethodField()
+    esta_siguiendo = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
         fields = [
             'id', 'email', 'nombre_usuario', 'password', 'tipo_usuario',
             'fecha_creacion', 'activo', 'foto_perfil', 'nombre', 'apellido',
-            'nombre_negocio', 'descripcion', 'direccion', 'telefono', 'resenas'
+            'nombre_negocio', 'descripcion', 'direccion', 'telefono',
+            'seguidores_count', 'seguidos_count', 'esta_siguiendo', 'resenas'
         ]
         extra_kwargs = {
             'password': {'write_only': True}
@@ -155,3 +159,22 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
     def get_resenas(self, obj):
         calificaciones = obj.calificaciones_recibidas.select_related('usuario_califica').order_by('-fecha_creacion', '-id')
         return CalificacionSerializer(calificaciones, many=True).data
+
+    def get_seguidores_count(self, obj):
+        return obj.seguidores.count()
+
+    def get_seguidos_count(self, obj):
+        return obj.siguiendo.count()
+
+    def get_esta_siguiendo(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return False
+
+        usuario_actual = request.user
+        if hasattr(usuario_actual, 'is_anonymous') and usuario_actual.is_anonymous:
+            return False
+        if not hasattr(usuario_actual, 'pk'):
+            return False
+
+        return Seguidor.objects.filter(seguidor_id=usuario_actual.pk, seguido=obj).exists()
