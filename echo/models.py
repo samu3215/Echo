@@ -44,18 +44,33 @@ class Seguidor(models.Model):
         ]
 
 class Publicacion(models.Model):
-    TIPO_MEDIA_CHOICES = [
-        ('texto', 'Texto'),
-        ('imagen', 'Imagen'),
-        ('video', 'Video'),
-    ]
-    contenido = models.TextField(blank=True, null=True)
-    url_media = models.CharField(max_length=255, blank=True, null=True)
-    tipo_media = models.CharField(max_length=10, choices=TIPO_MEDIA_CHOICES, default='texto')
+    descripcion = models.TextField(blank=True, null=True)
+    comentarios_activados = models.BooleanField(default=True)
+    
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     activo = models.BooleanField(default=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='publicaciones')
+
+    def __str__(self):
+        return f"Publicacion de {self.usuario.nombre_usuario}"
+
+class ArchivoPublicacion(models.Model):
+    TIPO_MEDIA_CHOICES = [
+        ('imagen', 'Imagen'),
+        ('video', 'Video'),
+    ]
+    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, related_name='archivos')
+    url_media = models.CharField(max_length=255)
+    tipo_media = models.CharField(max_length=10, choices=TIPO_MEDIA_CHOICES)
+    
+    orden = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ['orden']
+        constraints = [
+            UniqueConstraint(fields=['publicacion', 'orden'], name='orden_unico_por_publicacion')
+        ]
 
 class Comentario(models.Model):
     contenido = models.TextField()
@@ -63,8 +78,10 @@ class Comentario(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     activo = models.BooleanField(default=True)
+
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='comentarios')
     publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, related_name='comentarios_publicacion')
+    comentario_padre = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='respuestas')
 
 class Like(models.Model):
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='likes')

@@ -3,9 +3,25 @@ from django.contrib.auth.hashers import make_password # type: ignore
 from django.contrib.auth.password_validation import validate_password as django_validate_password # type: ignore
 from django.core.validators import validate_email as django_validate_email # type: ignore
 from django.core.exceptions import ValidationError as DjangoValidationError # type: ignore
+from django.utils.html import strip_tags 
 import re
 
 from echo.models import *
+
+
+class CalificacionSerializer(serializers.ModelSerializer):
+    usuario = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Calificacion
+        fields = ['id', 'puntuacion', 'descripcion', 'fecha_creacion', 'usuario']
+
+    def get_usuario(self, obj):
+        return {
+            'nombre_usuario': obj.usuario_califica.nombre_usuario,
+            'foto_perfil': obj.usuario_califica.foto_perfil,
+        }
+
 
 class RegistroUsuarioSerializer(serializers.ModelSerializer):
 
@@ -29,9 +45,7 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         if value:
             if len(value) > 250:
                 raise serializers.ValidationError("La descripción no puede superar los 250 caracteres.")
-            patron = r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$'
-            if not re.match(patron, value):
-                raise serializers.ValidationError("La descripción solo puede contener letras y números.")
+            # Eliminamos el 'patron' estricto. Ahora el usuario puede usar comas, puntos, y signos como >, <, !
         return value
 
     def validate_telefono(self, value):
@@ -68,13 +82,11 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
             data.pop('confirmar_password') 
 
         for campo, valor in data.items():
-            if isinstance(valor, str) and ('<' in valor or '>' in valor):
-                raise serializers.ValidationError({campo: "No se permiten caracteres especiales como < o > por seguridad."})
-
+            if isinstance(valor, str):
+                data[campo] = strip_tags(valor)
 
         tipo = data.get('tipo_usuario', getattr(self.instance, 'tipo_usuario', None))
         
-
         if 'nombre' in data: data['nombre'] = data['nombre'].strip()
         if 'apellido' in data: data['apellido'] = data['apellido'].strip()
 
@@ -120,3 +132,46 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         if 'password' in validated_data:
             validated_data['password'] = make_password(validated_data['password'])
         return super().update(instance, validated_data)
+
+
+class UsuarioDetalleSerializer(serializers.ModelSerializer):
+    resenas = serializers.SerializerMethodField()
+    seguidores_count = serializers.SerializerMethodField()
+    seguidos_count = serializers.SerializerMethodField()
+    esta_siguiendo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Usuario
+        fields = [
+            'id', 'email', 'nombre_usuario', 'password', 'tipo_usuario',
+            'fecha_creacion', 'activo', 'foto_perfil', 'nombre', 'apellido',
+            'nombre_negocio', 'descripcion', 'direccion', 'telefono',
+            'seguidores_count', 'seguidos_count', 'esta_siguiendo', 'resenas'
+        ]
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+        read_only_fields = ['activo', 'fecha_creacion']
+
+    def get_resenas(self, obj):
+        calificaciones = obj.calificaciones_recibidas.select_related('usuario_califica').order_by('-fecha_creacion', '-id')
+        return CalificacionSerializer(calificaciones, many=True).data
+
+    def get_seguidores_count(self, obj):
+        return obj.seguidores.count()
+
+    def get_seguidos_count(self, obj):
+        return obj.siguiendo.count()
+
+    def get_esta_siguiendo(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return False
+
+        usuario_actual = request.user
+        if hasattr(usuario_actual, 'is_anonymous') and usuario_actual.is_anonymous:
+            return False
+        if not hasattr(usuario_actual, 'pk'):
+            return False
+
+        return Seguidor.objects.filter(seguidor_id=usuario_actual.pk, seguido=obj).exists()
