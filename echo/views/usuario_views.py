@@ -24,11 +24,8 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
 
         if self.action in ['create', 'list', 'retrieve']:
             return [AllowAny()]
-
-        if self.action == 'seguir':
-            return [RequiereToken()]
-
-        return [RequiereToken(), EsDuenoDelPerfil()]
+        
+        return [RequiereToken(), EsDueno()]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
