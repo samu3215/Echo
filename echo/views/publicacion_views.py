@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination 
 from ..serializers.publicacion_serializers import *
+from django.db.models import Case, When, Value, IntegerField
 from ..models import *
 
 from ..utils.autenticacion import *
@@ -28,7 +29,7 @@ class PublicacionViewSet(viewsets.ModelViewSet):
         return [RequiereToken(), EsDueno()] 
 
     def get_queryset(self):
-        publicaciones_activas = Publicacion.objects.filter(activo=True)
+        publicaciones_activas = Publicacion.objects.filter(activo=True).select_related('usuario')
 
         usuario_perfil = self.request.query_params.get('usuario', None)
         if usuario_perfil:
@@ -42,15 +43,18 @@ class PublicacionViewSet(viewsets.ModelViewSet):
             ).order_by('-fecha_creacion')
 
 
-        if not hasattr(self.request.user, 'tipo_usuario'):
-            return publicaciones_activas.order_by('?') 
+        ids_usuarios_seguidos = []
+        if hasattr(self.request.user, 'id'):
+            ids_usuarios_seguidos = Seguidor.objects.filter(seguidor=self.request.user).values_list('seguido_id', flat=True)
 
-        ids_usuarios_seguidos = Seguidor.objects.filter(seguidor=self.request.user).values_list('seguido_id', flat=True)
-        if ids_usuarios_seguidos.exists():
-            feed_seguidos = publicaciones_activas.filter(usuario_id__in=ids_usuarios_seguidos).order_by('-fecha_creacion') 
-            if feed_seguidos.exists():
-                return feed_seguidos
-        return publicaciones_activas.order_by('?')
+        return publicaciones_activas.annotate(
+            prioridad=Case(
+                When(usuario__tipo_usuario='empresarial', then=Value(0)),
+                When(usuario__id__in=ids_usuarios_seguidos, then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            )
+        ).order_by('prioridad', '-fecha_creacion')
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
