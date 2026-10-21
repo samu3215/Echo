@@ -21,6 +21,10 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         read_only_fields = ['activo', 'fecha_creacion']
 
     def validate_nombre_usuario(self, value):
+
+        if len(value) < 4:
+            raise serializers.ValidationError("el nombre de usuario debe de tener minimo 4 caracteres")
+        
         patron = r'^[a-zA-Z0-9_]+$'
         if not re.match(patron, value):
             raise serializers.ValidationError("El nombre de usuario solo puede contener letras, números y guiones bajos (_), sin espacios.")
@@ -30,7 +34,6 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         if value:
             if len(value) > 250:
                 raise serializers.ValidationError("La descripción no puede superar los 250 caracteres.")
-            # Eliminamos el 'patron' estricto. Ahora el usuario puede usar comas, puntos, y signos como >, <, !
         return value
 
     def validate_telefono(self, value):
@@ -55,7 +58,7 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         except DjangoValidationError:
             raise serializers.ValidationError("El correo electrónico no tiene un formato válido.")
         return email_limpio
-
+        
     def validate(self, data):
 
         if 'password' in data:

@@ -21,7 +21,7 @@ class ComunidadSerializer(serializers.ModelSerializer):
 
     def get_estoy_unido(self, obj):
         request = self.context.get('request')
-        if request and hasattr(request, 'user') and hasattr(request.user, 'id'):
+        if request and hasattr(request, 'user') and isinstance(request.user, Usuario):
             return obj.miembros.filter(usuario=request.user).exists()
         return False
 

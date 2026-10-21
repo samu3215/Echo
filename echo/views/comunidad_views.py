@@ -32,7 +32,7 @@ class ComunidadViewSet(viewsets.ModelViewSet):
             return comunidades_activas.filter(usuario__nombre_usuario=usuario_creador).order_by('-fecha_creacion')
 
         mostrar_unidas = self.request.query_params.get('unidas', None)
-        if mostrar_unidas == 'true' and hasattr(self.request.user, 'id'):
+        if mostrar_unidas == 'true' and isinstance(self.request.user, Usuario):
             return comunidades_activas.filter(miembros__usuario=self.request.user).order_by('-fecha_creacion')
             
         categoria = self.request.query_params.get('categoria', None)

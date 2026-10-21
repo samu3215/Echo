@@ -44,7 +44,7 @@ class PublicacionViewSet(viewsets.ModelViewSet):
 
 
         ids_usuarios_seguidos = []
-        if hasattr(self.request.user, 'id'):
+        if isinstance(self.request.user, Usuario):
             ids_usuarios_seguidos = Seguidor.objects.filter(seguidor=self.request.user).values_list('seguido_id', flat=True)
 
         return publicaciones_activas.annotate(

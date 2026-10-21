@@ -54,6 +54,11 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
         usuario = self.get_object()
         usuario.activo = False
         usuario.save()
+
+        usuario.publicaciones.update(activo=False)
+        usuario.comentarios.update(activo=False)
+        usuario.comunidades_creadas.update(activo=False)
+        usuario.mensajes_comunidad.update(activo=False)
         
         return Response(
             {"mensaje": "Usuario eliminado correctamente."}, 
