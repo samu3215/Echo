@@ -24,6 +24,8 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
 
         if self.action in ['create', 'list', 'retrieve']:
             return [AllowAny()]
+        
+        return [RequiereToken(), EsDueno()]
 
         if self.action == 'seguir':
             return [RequiereToken()]
