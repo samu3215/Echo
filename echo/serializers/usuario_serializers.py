@@ -7,10 +7,30 @@ import re
 
 from echo.models import *
 
+
+
+from echo.models import Usuario
+
+   
+    
+
 class RegistroUsuarioSerializer(serializers.ModelSerializer):
-
+    descripcion = serializers.CharField(
+        required=False, 
+        allow_blank=True, 
+        allow_null=True,
+        max_length=500,
+        validators=[]  # <-- Esto anula cualquier RegexValidator heredado del modelo
+    )
     confirmar_password = serializers.CharField(write_only=True, required=False)
-
+        
+    class Meta:
+        model = Usuario
+        fields = '__all__'
+        extra_kwargs = {
+            'password': {'write_only': True} 
+        }
+        read_only_fields = ['activo', 'fecha_creacion']
     class Meta:
         model = Usuario
         fields = '__all__'
@@ -120,3 +140,22 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         if 'password' in validated_data:
             validated_data['password'] = make_password(validated_data['password'])
         return super().update(instance, validated_data)
+    
+
+
+from rest_framework import serializers
+from echo.models import Usuario  # o el nombre exacto de tu modelo
+
+class UsuarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        # Incluye todos los nombres de campos exactos que tienes en tu models.py
+        fields = [
+            'id', 
+            'nombre', 
+            'apellido', 
+            'nombre_usuario', 
+            'telefono', 
+            'correo', 
+            'descripcion'
+        ]

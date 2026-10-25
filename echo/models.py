@@ -1,13 +1,40 @@
 from django.db import models
+from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import F, Q, CheckConstraint, UniqueConstraint
+
+class Perfil(models.Model):
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
+    nombre_completo = models.CharField(max_length=150, blank=True)
+    biografia = models.TextField(max_length=500, blank=True)
+    sitio_web = models.URLField(blank=True)
+    privado = models.BooleanField(default=False)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+
+    def __str__(self):
+        return f'Perfil de {self.usuario.username}'
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
 class Usuario(models.Model):
     TIPO_USUARIO_CHOICES = [
         ('normal', 'Normal'),
         ('empresarial', 'Empresarial'),
     ]
-    
+    descripcion = models.CharField(max_length=500, blank=True, null=True)
     email = models.EmailField(max_length=100, unique=True)
     nombre_usuario = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=255) 
@@ -31,6 +58,9 @@ class Usuario(models.Model):
         if self.telefono == "":
             self.telefono = None
         super().save(*args, **kwargs)
+    
+    def clean(self):
+        super().clean()
 
 class Seguidor(models.Model):
     seguidor = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='siguiendo')
