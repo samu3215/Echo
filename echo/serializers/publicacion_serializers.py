@@ -49,8 +49,8 @@ class ComentarioSerializer(serializers.ModelSerializer):
 
 class PublicacioSeraializer(serializers.ModelSerializer):
     archivos = ArchivoPublicacionSerializer(many=True, required=False)
-    likes_publicacion = Likeserializer(many=True, read_only=True)
-    comentarios_publicacion = ComentarioSerializer(many=True, read_only=True)
+    likes_publicacion = serializers.SerializerMethodField()
+    comentarios_publicacion = serializers.SerializerMethodField()
 
     usuario = UsuarioBasicoSerializer(read_only=True)
     
@@ -67,6 +67,14 @@ class PublicacioSeraializer(serializers.ModelSerializer):
             'activo', 'usuario', 'likes_publicacion', 'comentarios_publicacion'
         ]
 
+    def get_comentarios_publicacion(self, obj):
+        comentarios_activos = obj.comentarios_publicacion.filter(activo=True)
+        return ComentarioSerializer(comentarios_activos, many=True).data
+
+    def get_likes_publicacion(self, obj):
+        likes_activos = obj.likes_publicacion.filter(usuario__activo=True)
+        return Likeserializer(likes_activos, many=True).data
+    
     def validate(self, data):
  
         for campo, valor in data.items():
@@ -78,6 +86,9 @@ class PublicacioSeraializer(serializers.ModelSerializer):
         if isinstance(descripcion, str):
             descripcion = descripcion.strip()  
             data['descripcion'] = descripcion  
+
+            if len(descripcion) > 2200:
+                raise serializers.ValidationError({"descripcion": "La descripción de la publicación no puede superar los 2200 caracteres."})
 
         if self.instance is None:
 

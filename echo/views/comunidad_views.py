@@ -95,7 +95,8 @@ class ComunidadViewSet(viewsets.ModelViewSet):
                 "id": rel.usuario.id,
                 "nombre_usuario": rel.usuario.nombre_usuario,
                 "foto_perfil": rel.usuario.foto_perfil,
-                "es_administrador": rel.usuario.id == comunidad.usuario.id
+                "es_administrador": rel.usuario.id == comunidad.usuario.id,
+                "tipo_usuario": rel.usuario.tipo_usuario
             })
             
         return Response(datos_miembros, status=status.HTTP_200_OK)
@@ -130,11 +131,15 @@ class ComunidadViewSet(viewsets.ModelViewSet):
         if not nuevo_dueno_id:
             return Response({"error": "Debes especificar al nuevo dueño."}, status=status.HTTP_400_BAD_REQUEST)
             
-        es_miembro = UsuarioComunidad.objects.filter(comunidad=comunidad, usuario_id=nuevo_dueno_id).exists()
-        if not es_miembro:
+        membresia_nuevo_dueno = UsuarioComunidad.objects.filter(comunidad=comunidad, usuario_id=nuevo_dueno_id).select_related('usuario').first()
+        if not membresia_nuevo_dueno:
             return Response({"error": "El nuevo administrador debe ser miembro de la comunidad primero."}, status=status.HTTP_400_BAD_REQUEST)
             
         comunidad.usuario_id = nuevo_dueno_id
+
+        if membresia_nuevo_dueno.usuario.tipo_usuario == 'empresarial':
+            return Response({"error": "Un usuario empresarial no puede ser designado como dueño de la comunidad."}, status=status.HTTP_400_BAD_REQUEST)
+        
         comunidad.save()
         return Response({"mensaje": "La propiedad ha sido transferida exitosamente."}, status=status.HTTP_200_OK)
 

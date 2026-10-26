@@ -30,9 +30,18 @@ class ComunidadSerializer(serializers.ModelSerializer):
             if isinstance(valor, str):
                 valor_limpio = strip_tags(valor.strip())
                 data[campo] = valor_limpio
+
+        nombre = data.get('nombre')        
                 
-        if 'nombre' in data and not data['nombre']:
-            raise serializers.ValidationError({"nombre": "El nombre de la comunidad no puede estar vacío."})
+        if nombre is not None:
+            if not nombre:
+                raise serializers.ValidationError({"nombre": "El nombre de la comunidad no puede estar vacío."})
+            if len(nombre) > 255:
+                raise serializers.ValidationError({"nombre": "El nombre de la comunidad no puede superar los 255 caracteres."})
+            
+        descripcion = data.get('descripcion')
+        if descripcion and len(descripcion) > 1000:
+            raise serializers.ValidationError({"descripcion": "La descripción de la comunidad no puede superar los 1000 caracteres."})
 
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
@@ -77,7 +86,12 @@ class MensajeComunidadSerializer(serializers.ModelSerializer):
     def validate(self, data):
 
         if 'contenido' in data and isinstance(data['contenido'], str):
-            data['contenido'] = strip_tags(data['contenido'].strip())
+            contenido_limpio = strip_tags(data['contenido'].strip())
+
+            if len(contenido_limpio) > 2000:
+                raise serializers.ValidationError({"contenido": "El mensaje no puede superar los 2000 caracteres."})
+            
+            data['contenido'] = contenido_limpio
 
         contenido = data.get('contenido')
         publicacion = data.get('publicacion_reenviada')

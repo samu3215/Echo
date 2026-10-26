@@ -106,7 +106,7 @@ class Comunidad(models.Model):
         ('general', 'General / Otros'),
     ]
 
-    nombre = models.CharField(max_length=100)
+    nombre = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True, null=True)
     categoria = models.CharField(max_length=50, choices=CATEGORIAS_CHOICES)
     foto_comunidad = models.CharField(max_length=255, blank=True, null=True)
