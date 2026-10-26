@@ -80,7 +80,7 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
             data.pop('confirmar_password')
 
         for campo, valor in data.items():
-            if isinstance(valor, str):
+            if campo != 'password' and isinstance(valor, str):
                 data[campo] = strip_tags(valor)
 
         tipo = data.get('tipo_usuario', getattr(self.instance, 'tipo_usuario', None))

@@ -1,32 +1,63 @@
-import cloudinary.uploader #type:ignore
-from rest_framework.exceptions import ValidationError #type:ignore
+import cloudinary
+import cloudinary.uploader
+from cloudinary.exceptions import Error as CloudinaryError
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from rest_framework.exceptions import APIException, ValidationError
 
-FORMATOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4']
-TAMANO_MAXIMO_MB = 10 
 
-def subir_archivo_cloudinary(archivo, carpeta="general", es_perfil=False):
-    """
-    Servicio global para subir imágenes o videos a Cloudinary.
-    """
+FORMATOS_PERMITIDOS = {
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'video/mp4',
+}
+TAMANO_MAXIMO_MB = 10
+
+
+class CloudinaryUploadError(APIException):
+    status_code = 502
+    default_detail = 'No fue posible subir el archivo al servicio multimedia.'
+    default_code = 'cloudinary_upload_failed'
+
+
+def subir_archivo_cloudinary(archivo, carpeta='general', es_perfil=False):
     if archivo.size > TAMANO_MAXIMO_MB * 1024 * 1024:
-        raise ValidationError(f"El archivo es demasiado grande. El límite es {TAMANO_MAXIMO_MB} MB.")
+        raise ValidationError(
+            f'El archivo supera el límite de {TAMANO_MAXIMO_MB} MB.'
+        )
 
-    if es_perfil and "video" in archivo.content_type:
-        raise ValidationError("Las fotos de perfil deben ser imágenes (JPG, PNG, WEBP). No se permiten videos.")
+    tipo_contenido = getattr(archivo, 'content_type', None)
+    if tipo_contenido not in FORMATOS_PERMITIDOS:
+        raise ValidationError('Formato no soportado.')
+    if es_perfil and tipo_contenido.startswith('video/'):
+        raise ValidationError(
+            'Las fotos de perfil deben ser imágenes JPG, PNG o WEBP.'
+        )
 
-    if archivo.content_type not in FORMATOS_PERMITIDOS:
-        raise ValidationError("Formato no soportado. Revisa las extensiones permitidas.")
+    configuracion = {
+        'cloud_name': getattr(settings, 'CLOUDINARY_CLOUD_NAME', None),
+        'api_key': getattr(settings, 'CLOUDINARY_API_KEY', None),
+        'api_secret': getattr(settings, 'CLOUDINARY_API_SECRET', None),
+        'secure': True,
+    }
+    if not all(configuracion.get(clave) for clave in ('cloud_name', 'api_key', 'api_secret')):
+        raise ImproperlyConfigured(
+            'Configura CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET.'
+        )
 
+    cloudinary.config(**configuracion)
+    tipo_recurso = 'video' if tipo_contenido.startswith('video/') else 'image'
     try:
-        tipo_recurso = "video" if "video" in archivo.content_type else "image"
-        
         respuesta = cloudinary.uploader.upload(
             archivo,
             folder=carpeta,
-            resource_type=tipo_recurso
+            resource_type=tipo_recurso,
         )
-        
-        return respuesta.get("secure_url")
-        
-    except Exception as e:
-        raise ValidationError(f"Error al subir el archivo al servidor multimedia: {str(e)}")
+    except CloudinaryError as error:
+        raise CloudinaryUploadError() from error
+
+    url_segura = respuesta.get('secure_url')
+    if not url_segura:
+        raise CloudinaryUploadError()
+    return url_segura

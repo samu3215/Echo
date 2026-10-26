@@ -27,8 +27,15 @@ class PublicacionViewSet(viewsets.ModelViewSet):
         publicaciones_activas = (
             Publicacion.objects.filter(activo=True)
             .select_related('usuario')
-            .prefetch_related('likes_publicacion__usuario', 'comentarios_publicacion__usuario')
+            .prefetch_related(
+                'archivos',
+                'likes_publicacion__usuario',
+                'comentarios_publicacion__usuario',
+            )
         )
+
+        if self.action != 'list':
+            return publicaciones_activas
 
         usuario_perfil = self.request.query_params.get('usuario')
         if usuario_perfil:
@@ -40,7 +47,7 @@ class PublicacionViewSet(viewsets.ModelViewSet):
         if usuario_likes:
             return publicaciones_activas.filter(
                 likes_publicacion__usuario__nombre_usuario=usuario_likes,
-            ).order_by('-fecha_creacion')
+            ).distinct().order_by('-fecha_creacion')
 
         usuario_actual = self.request.user
         if not hasattr(usuario_actual, 'tipo_usuario'):
@@ -68,7 +75,7 @@ class PublicacionViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(usuario=self.request.user)
+        serializer.save(usuario=request.user)
         return Response(
             {
                 'mensaje': 'Publicación creada correctamente',
@@ -80,7 +87,7 @@ class PublicacionViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         publicacion = self.get_object()
         publicacion.activo = False
-        publicacion.save()
+        publicacion.save(update_fields=['activo'])
         return Response(
             {'mensaje': 'Publicación eliminada correctamente.'},
             status=status.HTTP_200_OK,
@@ -115,8 +122,12 @@ class ComentarioViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return (
-            Comentario.objects.filter(activo=True, publicacion__activo=True)
-            .select_related('usuario', 'publicacion')
+            Comentario.objects.filter(
+                activo=True,
+                publicacion__activo=True,
+                usuario__activo=True,
+            )
+            .select_related('usuario', 'publicacion', 'comentario_padre')
         )
 
     def get_permissions(self):
@@ -127,7 +138,7 @@ class ComentarioViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(usuario=self.request.user)
+        serializer.save(usuario=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):

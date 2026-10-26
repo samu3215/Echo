@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from echo.models import Publicacion, RecuperacionContrasena, Seguidor, Usuario
+from echo.models import ArchivoPublicacion, Publicacion, RecuperacionContrasena, Seguidor, Usuario
 from echo.serializers.usuario_serializers import RegistroUsuarioSerializer
 from echo.utils.tokens import generar_token_jwt
 
@@ -274,12 +274,12 @@ class PublicacionViewSetTests(TestCase):
     def test_usuario_autenticado_crea_publicacion_y_comentario(self):
         respuesta_publicacion = self.client.post(
             '/api/publicaciones/',
-            {'contenido': '<p>Publicación de prueba</p>', 'tipo_media': 'texto'},
+            {'descripcion': '<p>Publicación de prueba</p>'},
             format='json',
         )
         self.assertEqual(respuesta_publicacion.status_code, 201)
         datos_publicacion = respuesta_publicacion.data['datos']
-        self.assertEqual(datos_publicacion['contenido'], 'Publicación de prueba')
+        self.assertEqual(datos_publicacion['descripcion'], 'Publicación de prueba')
         self.assertEqual(datos_publicacion['usuario']['id'], self.autor.id)
 
         respuesta_comentario = self.client.post(
@@ -297,8 +297,7 @@ class PublicacionViewSetTests(TestCase):
     def test_solo_el_propietario_puede_modificar_publicacion(self):
         publicacion = Publicacion.objects.create(
             usuario=self.autor,
-            contenido='Original',
-            tipo_media='texto',
+            descripcion='Original',
         )
         self.client.credentials(
             HTTP_AUTHORIZATION=f'Bearer {generar_token_jwt(self.otro_usuario)}'
@@ -306,7 +305,7 @@ class PublicacionViewSetTests(TestCase):
 
         respuesta = self.client.patch(
             f'/api/publicaciones/{publicacion.id}/',
-            {'contenido': 'Modificación no autorizada'},
+            {'descripcion': 'Modificación no autorizada'},
             format='json',
         )
 
@@ -315,13 +314,11 @@ class PublicacionViewSetTests(TestCase):
     def test_feed_perfil_likes_y_paginacion(self):
         Publicacion.objects.create(
             usuario=self.autor,
-            contenido='Publicación del autor',
-            tipo_media='texto',
+            descripcion='Publicación del autor',
         )
         Publicacion.objects.create(
             usuario=self.otro_usuario,
-            contenido='Publicación del otro usuario',
-            tipo_media='texto',
+            descripcion='Publicación del otro usuario',
         )
         self.client.credentials()
 
@@ -348,8 +345,7 @@ class PublicacionViewSetTests(TestCase):
     def test_like_se_alterna_y_rechaza_like_a_publicacion_propia(self):
         publicacion_otro = Publicacion.objects.create(
             usuario=self.otro_usuario,
-            contenido='Publicación para dar like',
-            tipo_media='texto',
+            descripcion='Publicación para dar like',
         )
         respuesta_like = self.client.post(
             f'/api/publicaciones/{publicacion_otro.id}/like/',
@@ -369,8 +365,7 @@ class PublicacionViewSetTests(TestCase):
 
         publicacion_propia = Publicacion.objects.create(
             usuario=self.autor,
-            contenido='Publicación propia',
-            tipo_media='texto',
+            descripcion='Publicación propia',
         )
         respuesta_propia = self.client.post(
             f'/api/publicaciones/{publicacion_propia.id}/like/',
@@ -384,13 +379,11 @@ class PublicacionViewSetTests(TestCase):
         )
         Publicacion.objects.create(
             usuario=self.autor,
-            contenido='Publicación propia',
-            tipo_media='texto',
+            descripcion='Publicación propia',
         )
         publicacion_seguido = Publicacion.objects.create(
             usuario=self.otro_usuario,
-            contenido='Publicación de seguido',
-            tipo_media='texto',
+            descripcion='Publicación de seguido',
         )
 
         respuesta = self.client.get('/api/publicaciones/')
@@ -398,3 +391,57 @@ class PublicacionViewSetTests(TestCase):
         self.assertEqual(respuesta.status_code, 200)
         self.assertEqual(respuesta.data['count'], 1)
         self.assertEqual(respuesta.data['results'][0]['id'], publicacion_seguido.id)
+
+    def test_publicacion_acepta_hasta_ocho_archivos_y_actualiza_orden(self):
+        archivos = [
+            {
+                'url_media': f'https://media.ejemplo/{indice}.jpg',
+                'tipo_media': 'imagen',
+            }
+            for indice in range(1, 9)
+        ]
+        respuesta_creacion = self.client.post(
+            '/api/publicaciones/',
+            {'descripcion': 'Publicación con archivos', 'archivos': archivos},
+            format='json',
+        )
+        self.assertEqual(respuesta_creacion.status_code, 201)
+        publicacion_id = respuesta_creacion.data['datos']['id']
+        archivos_creados = list(
+            ArchivoPublicacion.objects.filter(publicacion_id=publicacion_id).order_by('orden')
+        )
+        self.assertEqual([archivo.orden for archivo in archivos_creados], list(range(1, 9)))
+
+        respuesta_actualizacion = self.client.patch(
+            f'/api/publicaciones/{publicacion_id}/',
+            {
+                'archivos': [
+                    {'id': archivos_creados[0].id, 'orden': 2},
+                    {'id': archivos_creados[1].id, 'orden': 1},
+                ]
+            },
+            format='json',
+        )
+        self.assertEqual(respuesta_actualizacion.status_code, 200)
+        archivos_actualizados = list(
+            ArchivoPublicacion.objects.filter(publicacion_id=publicacion_id).order_by('orden')
+        )
+        self.assertEqual(
+            [archivo.id for archivo in archivos_actualizados],
+            [archivos_creados[1].id, archivos_creados[0].id],
+        )
+
+    def test_publicacion_rechaza_mas_de_ocho_archivos(self):
+        archivos = [
+            {
+                'url_media': f'https://media.ejemplo/{indice}.jpg',
+                'tipo_media': 'imagen',
+            }
+            for indice in range(1, 10)
+        ]
+        respuesta = self.client.post(
+            '/api/publicaciones/',
+            {'archivos': archivos},
+            format='json',
+        )
+        self.assertEqual(respuesta.status_code, 400)

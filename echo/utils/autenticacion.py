@@ -4,19 +4,22 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import BasePermission
 
-from echo.models import *
+from echo.models import Usuario
 
 
 class AutenticacionJWT(BaseAuthentication):
     def authenticate(self, request):
-        cabecera_autenticacion = request.headers.get('Authorization')
-        if not cabecera_autenticacion or not cabecera_autenticacion.startswith('Bearer '):
+        cabecera_autenticacion = request.headers.get('Authorization', '')
+        esquema, separador, token = cabecera_autenticacion.partition(' ')
+        if esquema != 'Bearer':
             return None
+        token = token.strip()
+        if not separador or not token:
+            raise AuthenticationFailed('Token inválido o usuario no existe.')
 
-        token = cabecera_autenticacion.split(' ')[1]
         try:
             datos_token = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            usuario = Usuario.objects.get(id=datos_token['user_id'], activo=True)
+            usuario = Usuario.objects.get(id=datos_token.get('user_id'), activo=True)
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed('El token expiró. Inicia sesión de nuevo.')
         except (jwt.InvalidTokenError, Usuario.DoesNotExist):

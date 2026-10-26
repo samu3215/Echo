@@ -155,14 +155,6 @@ EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '15'))
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:9999')
 
 
-import cloudinary #type:ignore
-import cloudinary.uploader #type:ignore
-import cloudinary.api #type:ignore
-import os
-
-cloudinary.config( 
-  cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
-  api_key = os.environ.get('CLOUDINARY_API_KEY'), 
-  api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
-  secure = True
-)
+CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME')
+CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY')
+CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET')
