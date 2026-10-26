@@ -1,7 +1,8 @@
-from rest_framework.views import APIView #type: ignore
-from rest_framework.response import Response #type: ignore
-from rest_framework import status #type: ignore
-from echo.utils.cloudinary import *
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from echo.utils.cloudinary import subir_archivo_cloudinary
 
 class UploadMediaAPIView(APIView):
     def post(self, request):
@@ -13,7 +14,7 @@ class UploadMediaAPIView(APIView):
             return Response({"error": "No se envió ningún archivo."}, status=status.HTTP_400_BAD_REQUEST)
 
         
-        es_perfil = True if carpeta == 'perfiles' else False
+        es_perfil = carpeta == 'perfiles'
 
         url_segura = subir_archivo_cloudinary(archivo, carpeta, es_perfil)
 

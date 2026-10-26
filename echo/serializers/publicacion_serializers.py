@@ -1,6 +1,6 @@
-from rest_framework import serializers # type: ignore
+from rest_framework import serializers
 
-from ..models import *
+from echo.models import Publicacion
 
 
 

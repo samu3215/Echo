@@ -1,9 +1,10 @@
-import jwt # type: ignore
-from django.conf import settings # type: ignore
-from rest_framework.authentication import BaseAuthentication # type: ignore
-from rest_framework.exceptions import AuthenticationFailed # type: ignore
-from rest_framework.permissions import BasePermission # type: ignore
-from echo.models import *
+import jwt
+from django.conf import settings
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.permissions import BasePermission
+
+from echo.models import Usuario
 
 class AutenticacionJWT(BaseAuthentication):
 

@@ -1,52 +1,64 @@
-from rest_framework import serializers # type: ignore
-from django.contrib.auth.hashers import make_password # type: ignore
-from django.contrib.auth.password_validation import validate_password as django_validate_password # type: ignore
-from django.core.validators import validate_email as django_validate_email # type: ignore
-from django.core.exceptions import ValidationError as DjangoValidationError # type: ignore
 import re
 
-from echo.models import *
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.password_validation import validate_password as django_validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email as django_validate_email
+from django.utils.html import strip_tags
+from rest_framework import serializers
+
+from echo.models import Calificacion, Seguidor, Usuario
+
+
+class CalificacionSerializer(serializers.ModelSerializer):
+    usuario = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Calificacion
+        fields = ['id', 'puntuacion', 'descripcion', 'fecha_creacion', 'usuario']
+
+    def get_usuario(self, obj):
+        return {
+            'nombre_usuario': obj.usuario_califica.nombre_usuario,
+            'foto_perfil': obj.usuario_califica.foto_perfil,
+        }
+
 
 class RegistroUsuarioSerializer(serializers.ModelSerializer):
-
     confirmar_password = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Usuario
         fields = '__all__'
-        extra_kwargs = {
-            'password': {'write_only': True} 
-        }
+        extra_kwargs = {'password': {'write_only': True}}
         read_only_fields = ['activo', 'fecha_creacion']
 
     def validate_nombre_usuario(self, value):
         patron = r'^[a-zA-Z0-9_]+$'
         if not re.match(patron, value):
-            raise serializers.ValidationError("El nombre de usuario solo puede contener letras, números y guiones bajos (_), sin espacios.")
+            raise serializers.ValidationError(
+                'El nombre de usuario solo puede contener letras, números y guiones bajos (_), sin espacios.'
+            )
         return value
 
     def validate_descripcion(self, value):
-        if value:
-            if len(value) > 250:
-                raise serializers.ValidationError("La descripción no puede superar los 250 caracteres.")
-            patron = r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$'
-            if not re.match(patron, value):
-                raise serializers.ValidationError("La descripción solo puede contener letras y números.")
+        if value and len(value) > 250:
+            raise serializers.ValidationError('La descripción no puede superar los 250 caracteres.')
         return value
 
     def validate_telefono(self, value):
-        if value: 
-            if not value.isdigit(): 
-                raise serializers.ValidationError("El teléfono debe contener únicamente números.")
+        if value:
+            if not value.isdigit():
+                raise serializers.ValidationError('El teléfono debe contener únicamente números.')
             if len(value) != 10:
-                raise serializers.ValidationError("El teléfono debe tener exactamente 10 dígitos.")
+                raise serializers.ValidationError('El teléfono debe tener exactamente 10 dígitos.')
         return value
 
     def validate_password(self, value):
         try:
             django_validate_password(value)
-        except DjangoValidationError as e:
-            raise serializers.ValidationError(list(e.messages))
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(list(error.messages))
         return value
 
     def validate_email(self, value):
@@ -54,61 +66,53 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         try:
             django_validate_email(email_limpio)
         except DjangoValidationError:
-            raise serializers.ValidationError("El correo electrónico no tiene un formato válido.")
+            raise serializers.ValidationError('El correo electrónico no tiene un formato válido.')
         return email_limpio
 
     def validate(self, data):
-
         if 'password' in data:
             if 'confirmar_password' not in data:
-                raise serializers.ValidationError({"confirmar_password": "Debes confirmar la contraseña."})
+                raise serializers.ValidationError(
+                    {'confirmar_password': 'Debes confirmar la contraseña.'}
+                )
             if data['password'] != data['confirmar_password']:
-                raise serializers.ValidationError({"password": "Las contraseñas no coinciden."})
-
-            data.pop('confirmar_password') 
+                raise serializers.ValidationError({'password': 'Las contraseñas no coinciden.'})
+            data.pop('confirmar_password')
 
         for campo, valor in data.items():
-            if isinstance(valor, str) and ('<' in valor or '>' in valor):
-                raise serializers.ValidationError({campo: "No se permiten caracteres especiales como < o > por seguridad."})
-
+            if isinstance(valor, str):
+                data[campo] = strip_tags(valor)
 
         tipo = data.get('tipo_usuario', getattr(self.instance, 'tipo_usuario', None))
-        
-
-        if 'nombre' in data: data['nombre'] = data['nombre'].strip()
-        if 'apellido' in data: data['apellido'] = data['apellido'].strip()
+        if 'nombre' in data:
+            data['nombre'] = data['nombre'].strip()
+        if 'apellido' in data:
+            data['apellido'] = data['apellido'].strip()
 
         if tipo == 'empresarial':
             errores = {}
-
-            nombre_negocio = data.get('nombre_negocio', getattr(self.instance, 'nombre_negocio', None))
-            telefono = data.get('telefono', getattr(self.instance, 'telefono', None))
-            direccion = data.get('direccion', getattr(self.instance, 'direccion', None))
-
-            if not nombre_negocio: errores['nombre_negocio'] = "Obligatorio para empresas."
-            if not telefono: errores['telefono'] = "Obligatorio para empresas."
-            if not direccion: errores['direccion'] = "Obligatorio para empresas."
-            
-            if errores: raise serializers.ValidationError(errores)
-
+            if not data.get('nombre_negocio', getattr(self.instance, 'nombre_negocio', None)):
+                errores['nombre_negocio'] = 'Obligatorio para empresas.'
+            if not data.get('telefono', getattr(self.instance, 'telefono', None)):
+                errores['telefono'] = 'Obligatorio para empresas.'
+            if not data.get('direccion', getattr(self.instance, 'direccion', None)):
+                errores['direccion'] = 'Obligatorio para empresas.'
+            if errores:
+                raise serializers.ValidationError(errores)
             data['nombre'] = None
             data['apellido'] = None
-
         elif tipo == 'normal':
             errores = {}
-            nombre = data.get('nombre', getattr(self.instance, 'nombre', None))
-            apellido = data.get('apellido', getattr(self.instance, 'apellido', None))
-
-            if not nombre: errores['nombre'] = "Obligatorio para ciudadanos."
-            if not apellido: errores['apellido'] = "Obligatorio para ciudadanos."
-            
-            if errores: raise serializers.ValidationError(errores)
-
+            if not data.get('nombre', getattr(self.instance, 'nombre', None)):
+                errores['nombre'] = 'Obligatorio para ciudadanos.'
+            if not data.get('apellido', getattr(self.instance, 'apellido', None)):
+                errores['apellido'] = 'Obligatorio para ciudadanos.'
+            if errores:
+                raise serializers.ValidationError(errores)
             data['nombre_negocio'] = None
             data['direccion'] = None
-
         else:
-            raise serializers.ValidationError({"tipo_usuario": "Tipo de usuario no válido."})
+            raise serializers.ValidationError({'tipo_usuario': 'Tipo de usuario no válido.'})
 
         return data
 
@@ -120,3 +124,45 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         if 'password' in validated_data:
             validated_data['password'] = make_password(validated_data['password'])
         return super().update(instance, validated_data)
+
+
+class UsuarioDetalleSerializer(serializers.ModelSerializer):
+    resenas = serializers.SerializerMethodField()
+    seguidores_count = serializers.SerializerMethodField()
+    seguidos_count = serializers.SerializerMethodField()
+    esta_siguiendo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Usuario
+        fields = [
+            'id', 'email', 'nombre_usuario', 'password', 'tipo_usuario',
+            'fecha_creacion', 'activo', 'foto_perfil', 'nombre', 'apellido',
+            'nombre_negocio', 'descripcion', 'direccion', 'telefono',
+            'seguidores_count', 'seguidos_count', 'esta_siguiendo', 'resenas',
+        ]
+        extra_kwargs = {'password': {'write_only': True}}
+        read_only_fields = ['activo', 'fecha_creacion']
+
+    def get_resenas(self, obj):
+        calificaciones = obj.calificaciones_recibidas.select_related(
+            'usuario_califica'
+        ).order_by('-fecha_creacion', '-id')
+        return CalificacionSerializer(calificaciones, many=True).data
+
+    def get_seguidores_count(self, obj):
+        return obj.seguidores.count()
+
+    def get_seguidos_count(self, obj):
+        return obj.siguiendo.count()
+
+    def get_esta_siguiendo(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return False
+        usuario_actual = request.user
+        if getattr(usuario_actual, 'is_anonymous', True) or not hasattr(usuario_actual, 'pk'):
+            return False
+        return Seguidor.objects.filter(
+            seguidor_id=usuario_actual.pk,
+            seguido=obj,
+        ).exists()

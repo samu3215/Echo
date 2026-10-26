@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.auth.hashers import check_password, make_password
 from django.db.models import F, Q, CheckConstraint, UniqueConstraint
 
 class Usuario(models.Model):
@@ -27,10 +28,29 @@ class Usuario(models.Model):
     def __str__(self):
         return self.nombre_usuario
 
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
+
     def save(self, *args, **kwargs):
         if self.telefono == "":
             self.telefono = None
         super().save(*args, **kwargs)
+
+
+class RecuperacionContrasena(models.Model):
+    usuario = models.OneToOneField(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='recuperacion_contrasena',
+    )
+    codigo_hash = models.CharField(max_length=128, blank=True, default='')
+    codigo_expira_en = models.DateTimeField(blank=True, null=True)
+    token_nonce = models.UUIDField(blank=True, null=True)
+    token_expira_en = models.DateTimeField(blank=True, null=True)
+
 
 class Seguidor(models.Model):
     seguidor = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='siguiendo')
