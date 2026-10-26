@@ -6,8 +6,9 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from echo.models import RecuperacionContrasena, Usuario
+from echo.models import Publicacion, RecuperacionContrasena, Seguidor, Usuario
 from echo.serializers.usuario_serializers import RegistroUsuarioSerializer
+from echo.utils.tokens import generar_token_jwt
 
 
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
@@ -245,3 +246,155 @@ class RegistroSinActivacionTests(TestCase):
         self.assertNotEqual(usuario.password, nueva_password)
         self.assertTrue(usuario.password.startswith('pbkdf2_sha256$'))
         self.assertTrue(usuario.check_password(nueva_password))
+
+
+class PublicacionViewSetTests(TestCase):
+    def setUp(self):
+        self.autor = Usuario.objects.create(
+            email='autor@correo.com',
+            nombre_usuario='autor',
+            password=make_password('ContrasenaAutor123!'),
+            tipo_usuario='normal',
+            nombre='Autor',
+            apellido='Prueba',
+        )
+        self.otro_usuario = Usuario.objects.create(
+            email='otro@correo.com',
+            nombre_usuario='otro',
+            password=make_password('ContrasenaOtro123!'),
+            tipo_usuario='normal',
+            nombre='Otro',
+            apellido='Usuario',
+        )
+        self.client = APIClient()
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {generar_token_jwt(self.autor)}'
+        )
+
+    def test_usuario_autenticado_crea_publicacion_y_comentario(self):
+        respuesta_publicacion = self.client.post(
+            '/api/publicaciones/',
+            {'contenido': '<p>Publicación de prueba</p>', 'tipo_media': 'texto'},
+            format='json',
+        )
+        self.assertEqual(respuesta_publicacion.status_code, 201)
+        datos_publicacion = respuesta_publicacion.data['datos']
+        self.assertEqual(datos_publicacion['contenido'], 'Publicación de prueba')
+        self.assertEqual(datos_publicacion['usuario']['id'], self.autor.id)
+
+        respuesta_comentario = self.client.post(
+            '/api/comentarios/',
+            {
+                'contenido': '<p>Comentario de prueba</p>',
+                'publicacion': datos_publicacion['id'],
+            },
+            format='json',
+        )
+        self.assertEqual(respuesta_comentario.status_code, 201)
+        self.assertEqual(respuesta_comentario.data['contenido'], 'Comentario de prueba')
+        self.assertEqual(respuesta_comentario.data['usuario']['id'], self.autor.id)
+
+    def test_solo_el_propietario_puede_modificar_publicacion(self):
+        publicacion = Publicacion.objects.create(
+            usuario=self.autor,
+            contenido='Original',
+            tipo_media='texto',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {generar_token_jwt(self.otro_usuario)}'
+        )
+
+        respuesta = self.client.patch(
+            f'/api/publicaciones/{publicacion.id}/',
+            {'contenido': 'Modificación no autorizada'},
+            format='json',
+        )
+
+        self.assertEqual(respuesta.status_code, 403)
+
+    def test_feed_perfil_likes_y_paginacion(self):
+        Publicacion.objects.create(
+            usuario=self.autor,
+            contenido='Publicación del autor',
+            tipo_media='texto',
+        )
+        Publicacion.objects.create(
+            usuario=self.otro_usuario,
+            contenido='Publicación del otro usuario',
+            tipo_media='texto',
+        )
+        self.client.credentials()
+
+        respuesta_feed = self.client.get('/api/publicaciones/?tamano=1')
+        self.assertEqual(respuesta_feed.status_code, 200)
+        self.assertEqual(respuesta_feed.data['count'], 2)
+        self.assertEqual(len(respuesta_feed.data['results']), 1)
+
+        respuesta_perfil = self.client.get('/api/publicaciones/?usuario=autor')
+        self.assertEqual(respuesta_perfil.status_code, 200)
+        self.assertEqual(respuesta_perfil.data['count'], 1)
+        self.assertEqual(
+            respuesta_perfil.data['results'][0]['usuario']['nombre_usuario'],
+            'autor',
+        )
+
+        publicacion = Publicacion.objects.get(usuario=self.otro_usuario)
+        publicacion.likes_publicacion.create(usuario=self.autor)
+        respuesta_likes = self.client.get('/api/publicaciones/?like=autor')
+        self.assertEqual(respuesta_likes.status_code, 200)
+        self.assertEqual(respuesta_likes.data['count'], 1)
+        self.assertEqual(respuesta_likes.data['results'][0]['id'], publicacion.id)
+
+    def test_like_se_alterna_y_rechaza_like_a_publicacion_propia(self):
+        publicacion_otro = Publicacion.objects.create(
+            usuario=self.otro_usuario,
+            contenido='Publicación para dar like',
+            tipo_media='texto',
+        )
+        respuesta_like = self.client.post(
+            f'/api/publicaciones/{publicacion_otro.id}/like/',
+        )
+        self.assertEqual(respuesta_like.status_code, 204)
+        self.assertTrue(
+            publicacion_otro.likes_publicacion.filter(usuario=self.autor).exists()
+        )
+
+        respuesta_quitar_like = self.client.post(
+            f'/api/publicaciones/{publicacion_otro.id}/like/',
+        )
+        self.assertEqual(respuesta_quitar_like.status_code, 204)
+        self.assertFalse(
+            publicacion_otro.likes_publicacion.filter(usuario=self.autor).exists()
+        )
+
+        publicacion_propia = Publicacion.objects.create(
+            usuario=self.autor,
+            contenido='Publicación propia',
+            tipo_media='texto',
+        )
+        respuesta_propia = self.client.post(
+            f'/api/publicaciones/{publicacion_propia.id}/like/',
+        )
+        self.assertEqual(respuesta_propia.status_code, 403)
+
+    def test_feed_autenticado_prioriza_publicaciones_de_seguidos(self):
+        Seguidor.objects.create(
+            seguidor=self.autor,
+            seguido=self.otro_usuario,
+        )
+        Publicacion.objects.create(
+            usuario=self.autor,
+            contenido='Publicación propia',
+            tipo_media='texto',
+        )
+        publicacion_seguido = Publicacion.objects.create(
+            usuario=self.otro_usuario,
+            contenido='Publicación de seguido',
+            tipo_media='texto',
+        )
+
+        respuesta = self.client.get('/api/publicaciones/')
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.data['count'], 1)
+        self.assertEqual(respuesta.data['results'][0]['id'], publicacion_seguido.id)

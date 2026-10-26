@@ -10,7 +10,7 @@ from echo.serializers.usuario_serializers import (
 )
 from echo.utils.autenticacion import (
     AutenticacionJWT,
-    EsDuenoDelPerfil,
+    EsDueno,
     RequiereToken,
 )
 from echo.utils.tokens import generar_token_jwt
@@ -33,7 +33,7 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         if self.action == 'seguir':
             return [RequiereToken()]
-        return [RequiereToken(), EsDuenoDelPerfil()]
+        return [RequiereToken(), EsDueno()]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

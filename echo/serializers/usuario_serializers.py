@@ -159,9 +159,13 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request or not hasattr(request, 'user'):
             return False
+
         usuario_actual = request.user
-        if getattr(usuario_actual, 'is_anonymous', True) or not hasattr(usuario_actual, 'pk'):
+        if hasattr(usuario_actual, 'is_anonymous') and usuario_actual.is_anonymous:
             return False
+        if not hasattr(usuario_actual, 'pk'):
+            return False
+
         return Seguidor.objects.filter(
             seguidor_id=usuario_actual.pk,
             seguido=obj,

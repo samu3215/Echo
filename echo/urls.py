@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views.login_views import LoginAPIView
 from .views.media_views import UploadMediaAPIView
+from .views.publicacion_views import ComentarioViewSet, PublicacionViewSet
 from .views.recuperacion_views import (
     RestablecerContrasenaAPIView,
     SolicitarCodigoAPIView,
@@ -12,6 +13,8 @@ from .views.usuario_views import RegistroUsuarioViewSet
 
 router = DefaultRouter()
 router.register(r'usuarios', RegistroUsuarioViewSet, basename='usuario')
+router.register(r'publicaciones', PublicacionViewSet, basename='publicacion')
+router.register(r'comentarios', ComentarioViewSet, basename='comentario')
 
 urlpatterns = [
     path('api/', include(router.urls)),
