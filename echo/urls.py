@@ -5,6 +5,7 @@ from .views.usuario_views import *
 from .views.login_views import *
 from .views.publicacion_views import *
 from .views.comunidad_views import *
+from .views.calificacion_views import *
 
 
 router = DefaultRouter()
@@ -13,6 +14,7 @@ router.register(r'publicaciones', PublicacionViewSet, basename ='publicacion')
 router.register(r'comentarios', ComentarioViewSet, basename='comentario')
 router.register(r'comunidades', ComunidadViewSet, basename='comunidad')
 router.register(r'mensajes-comunidad', MensajeComunidadViewSet, basename='mensaje-comunidad')
+router.register(r'calificaciones', CalificacionViewSet, basename='calificacion')
 
 
 urlpatterns = [
