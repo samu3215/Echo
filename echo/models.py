@@ -15,6 +15,7 @@ class Usuario(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     
     activo = models.BooleanField(default=True)
+    es_admin = models.BooleanField(default=False)
     foto_perfil = models.CharField(max_length=255, blank=True, null=True)
 
     nombre = models.CharField(max_length=100, blank=True, null=True)
@@ -163,3 +164,39 @@ class Calificacion(models.Model):
             UniqueConstraint(fields=['usuario_califica', 'usuario_calificado'], name='calificacion_unica'),
             CheckConstraint(condition=~Q(usuario_califica=F('usuario_calificado')), name='evitar_autocalificacion')
         ]
+
+
+class Reporte(models.Model):
+    MOTIVOS_CHOICES = [
+        ('ilegal', 'Contenido Ilegal o Violento'),
+        ('abuso', 'Abuso / Acoso Grave'),
+        ('spam', 'Spam / Estafa'),
+    ]
+    
+    publicacion = models.ForeignKey('Publicacion', on_delete=models.CASCADE, related_name='reportes')
+    usuario_reportado = models.ForeignKey('Usuario', on_delete=models.CASCADE, related_name='reportes_recibidos')
+    usuario_reportador = models.ForeignKey('Usuario', on_delete=models.CASCADE, related_name='reportes_hechos')
+    
+    motivo = models.CharField(max_length=50, choices=MOTIVOS_CHOICES)
+    fecha_reporte = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['publicacion', 'usuario_reportador'], name='reporte_unico')
+        ]
+
+
+class Notificacion(models.Model):
+    TIPO_CHOICES = [
+        ('seguimiento', 'Nuevo Seguidor'),
+        ('calificacion', 'Nueva Calificación'),
+    ]
+    
+    usuario_destino = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='notificaciones_recibidas')
+    usuario_origen = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='notificaciones_enviadas')
+    
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    puntuacion = models.IntegerField(null=True, blank=True)
+    leido = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+

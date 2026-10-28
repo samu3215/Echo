@@ -6,7 +6,6 @@ from rest_framework.pagination import PageNumberPagination
 from ..serializers.publicacion_serializers import *
 from django.db.models import Case, When, Value, IntegerField
 from ..models import *
-
 from ..utils.autenticacion import *
 
 class PaginacionPublicaciones(PageNumberPagination):

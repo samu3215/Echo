@@ -9,6 +9,13 @@ class UsuarioBasicoSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre_usuario', 'foto_perfil', 'tipo_usuario', 'nombre', 'apellido', 'nombre_negocio']
         read_only_fields = fields
 
+class NotificacionSerializer(serializers.ModelSerializer):
+    usuario_origen = UsuarioBasicoSerializer(read_only=True)
+    
+    class Meta:
+        model = Notificacion
+        fields = ['id', 'tipo', 'leido', 'fecha_creacion', 'usuario_origen', 'puntuacion']
+        read_only_fields = fields
 
 class Likeserializer(serializers.ModelSerializer):
     usuario = UsuarioBasicoSerializer(read_only=True)

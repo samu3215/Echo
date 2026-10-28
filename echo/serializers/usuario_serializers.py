@@ -5,12 +5,18 @@ from django.core.validators import validate_email as django_validate_email # typ
 from django.core.exceptions import ValidationError as DjangoValidationError # type: ignore
 from django.utils.html import strip_tags 
 import re
-
+from .calificacion_serializers import *
 from echo.models import *
 
 class RegistroUsuarioSerializer(serializers.ModelSerializer):
 
+    calificaciones_recibidas = CalificacionSerializer(many=True, read_only=True)
+    
     confirmar_password = serializers.CharField(write_only=True, required=False)
+
+    seguidores_count = serializers.SerializerMethodField()
+    seguidos_count = serializers.SerializerMethodField()
+    lo_sigo = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
@@ -19,6 +25,7 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
             'password': {'write_only': True} 
         }
         read_only_fields = ['activo', 'fecha_creacion']
+
 
     def validate_nombre_usuario(self, value):
 
@@ -114,9 +121,29 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['password'] = make_password(validated_data['password'])
+        correo_admin = "samuelvillaadmin@gmail.com" 
+        if validated_data.get('email', '').lower() == correo_admin:
+            validated_data['es_admin'] = True
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         if 'password' in validated_data:
             validated_data['password'] = make_password(validated_data['password'])
         return super().update(instance, validated_data)
+
+    def get_seguidores_count(self, obj):
+        if hasattr(obj, 'seguidores'):
+            return obj.seguidores.count()
+        return Seguidor.objects.filter(seguido=obj).count()
+
+    def get_seguidos_count(self, obj):
+        if hasattr(obj, 'siguiendo'):
+            return obj.siguiendo.count()
+        return Seguidor.objects.filter(seguidor=obj).count()
+
+    def get_lo_sigo(self, obj):
+        request = self.context.get('request')
+        # Se asegura de que el request exista y el usuario sea una instancia real de tu modelo Usuario
+        if request and hasattr(request, 'user') and isinstance(request.user, Usuario):
+            return Seguidor.objects.filter(seguidor=request.user, seguido=obj).exists()
+        return False

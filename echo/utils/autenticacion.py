@@ -39,5 +39,8 @@ class EsDueno(BasePermission):
 
         if hasattr(obj, 'usuario'):
             return obj.usuario.id == request.user.id
+
+        if hasattr(obj, 'usuario_califica'):
+            return obj.usuario_califica.id == request.user.id
             
         return False
