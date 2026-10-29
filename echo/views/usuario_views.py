@@ -17,7 +17,7 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
        
-        if self.action in ['create', 'list', 'retrieve']:
+        if self.action in ['create', 'list', 'retrieve', 'listar_seguidores', 'listar_seguidos']:
             return [AllowAny()]
         
         if self.action in ['seguir_usuario', 'notificaciones']:
@@ -80,6 +80,22 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
             )
             return Response({"siguiendo": True}, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['get'], url_path='seguidores')
+    def listar_seguidores(self, request, nombre_usuario=None):
+        usuario = self.get_object()
+        seguidores = Seguidor.objects.filter(seguido=usuario).select_related('seguidor')
+        usuarios_seguidores = [seg.seguidor for seg in seguidores]
+        serializer = RegistroUsuarioSerializer(usuarios_seguidores, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='seguidos')
+    def listar_seguidos(self, request, nombre_usuario=None):
+        usuario = self.get_object()
+        seguidos = Seguidor.objects.filter(seguidor=usuario).select_related('seguido')
+        usuarios_seguidos = [seg.seguido for seg in seguidos]
+        serializer = RegistroUsuarioSerializer(usuarios_seguidos, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -118,6 +134,7 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
         usuario.comentarios.update(activo=False)
         usuario.comunidades_creadas.update(activo=False)
         usuario.mensajes_comunidad.update(activo=False)
+        usuario.calificaciones_dadas.update(activo=False)
         
         return Response(
             {"mensaje": "Usuario eliminado correctamente."}, 

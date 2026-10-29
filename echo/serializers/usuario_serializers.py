@@ -10,7 +10,7 @@ from echo.models import *
 
 class RegistroUsuarioSerializer(serializers.ModelSerializer):
 
-    calificaciones_recibidas = CalificacionSerializer(many=True, read_only=True)
+    calificaciones_recibidas = serializers.SerializerMethodField()
     
     confirmar_password = serializers.CharField(write_only=True, required=False)
 
@@ -143,7 +143,13 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
 
     def get_lo_sigo(self, obj):
         request = self.context.get('request')
-        # Se asegura de que el request exista y el usuario sea una instancia real de tu modelo Usuario
         if request and hasattr(request, 'user') and isinstance(request.user, Usuario):
             return Seguidor.objects.filter(seguidor=request.user, seguido=obj).exists()
         return False
+
+    def get_calificaciones_recibidas(self, obj):
+        calificaciones_activas = obj.calificaciones_recibidas.filter(
+            activo=True, 
+            usuario_califica__activo=True
+        )
+        return CalificacionSerializer(calificaciones_activas, many=True).data

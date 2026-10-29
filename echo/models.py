@@ -155,13 +155,17 @@ class Calificacion(models.Model):
     
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
-    
+    activo = models.BooleanField(default=True)
     usuario_califica = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='calificaciones_dadas')
     usuario_calificado = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='calificaciones_recibidas')
 
     class Meta:
         constraints = [
-            UniqueConstraint(fields=['usuario_califica', 'usuario_calificado'], name='calificacion_unica'),
+            UniqueConstraint(
+                fields=['usuario_califica', 'usuario_calificado'], 
+                condition=Q(activo=True), 
+                name='calificacion_unica_activa'
+            ),
             CheckConstraint(condition=~Q(usuario_califica=F('usuario_calificado')), name='evitar_autocalificacion')
         ]
 
