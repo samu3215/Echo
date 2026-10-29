@@ -263,7 +263,7 @@ class RestablecerContrasenaAPIView(RecuperacionAPIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            recuperacion.usuario.set_password(serializer.validated_data['password'])
+            recuperacion.usuario.password = make_password(serializer.validated_data['password'])
             recuperacion.usuario.save(update_fields=['password'])
             recuperacion.delete()
 

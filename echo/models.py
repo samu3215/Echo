@@ -217,3 +217,8 @@ class Notificacion(models.Model):
 
     class Meta:
         ordering = ['-fecha_creacion']
+
+class VerificacionRegistro(models.Model):
+    email = models.EmailField(unique=True)
+    codigo_hash = models.CharField(max_length=128)
+    expira_en = models.DateTimeField()

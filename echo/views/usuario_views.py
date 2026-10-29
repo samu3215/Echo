@@ -7,6 +7,13 @@ from echo.models import *
 from echo.serializers.usuario_serializers import *
 from echo.utils.autenticacion import *
 from echo.utils.tokens import *
+from rest_framework.views import APIView
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth.hashers import make_password, check_password
+import secrets
 
 class RegistroUsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.filter(activo=True)
@@ -141,3 +148,46 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
 
+class EnviarCodigoRegistroAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({"error": "Correo requerido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        codigo = f'{secrets.randbelow(1000000):06d}'
+        expiracion = timezone.now() + timedelta(minutes=5)
+        
+        VerificacionRegistro.objects.update_or_create(
+            email=email,
+            defaults={'codigo_hash': make_password(codigo), 'expira_en': expiracion}
+        )
+        
+        send_mail(
+            'Verifica tu correo en Echo',
+            f'Tu código de verificación para registrarte es: {codigo}\nEste código vence en 5 minutos.',
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+        return Response({"mensaje": "Código enviado"}, status=status.HTTP_200_OK)
+
+
+class VerificarCodigoRegistroAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        codigo = request.data.get('codigo')
+        
+        try:
+            verificacion = VerificacionRegistro.objects.get(email=email)
+        except VerificacionRegistro.DoesNotExist:
+            return Response({"error": "No hay código pendiente para este correo."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if timezone.now() > verificacion.expira_en or not check_password(codigo, verificacion.codigo_hash):
+            return Response({"error": "Código inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        verificacion.delete() # Se borra porque ya fue verificado exitosamente
+        return Response({"mensaje": "Correo verificado"}, status=status.HTTP_200_OK)
