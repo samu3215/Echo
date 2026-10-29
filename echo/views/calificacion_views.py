@@ -8,6 +8,10 @@ class CalificacionViewSet(viewsets.ModelViewSet):
     queryset = Calificacion.objects.all()
     serializer_class = CalificacionSerializer
     authentication_classes = [AutenticacionJWT]
+
+    def get_queryset(self):
+        return Calificacion.objects.filter(activo=True, usuario_califica__activo=True)
+
     
     def get_permissions(self):
         if self.action in ['create']:
@@ -27,3 +31,9 @@ class CalificacionViewSet(viewsets.ModelViewSet):
                 tipo='calificacion',
                 puntuacion=calificacion.puntuacion
             )
+
+    def destroy(self, request, *args, **kwargs):
+        calificacion = self.get_object()
+        calificacion.activo = False 
+        calificacion.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)

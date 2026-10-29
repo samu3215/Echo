@@ -37,7 +37,6 @@ class CalificacionSerializer(serializers.ModelSerializer):
 
         # Verificamos reseñas duplicadas SOLO cuando se está creando una nueva (self.instance is None)
         if self.instance is None:
-            if Calificacion.objects.filter(usuario_califica=usuario_actual, usuario_calificado=usuario_calificado).exists():
-                raise serializers.ValidationError("Ya has dejado una reseña para este negocio.")
-
+            if Calificacion.objects.filter(usuario_califica=usuario_actual, usuario_calificado=usuario_calificado, activo=True).exists():
+                raise serializers.ValidationError("Ya has dejado una reseña activa para este negocio.")
         return data

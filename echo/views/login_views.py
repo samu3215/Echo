@@ -1,8 +1,8 @@
-from django.contrib.auth.hashers import check_password # type: ignore
-from django.db.models import Q # type: ignore
-from rest_framework.views import APIView # type: ignore
-from rest_framework.response import Response # type: ignore
-from rest_framework import status # type: ignore
+from django.contrib.auth.hashers import check_password
+from django.db.models import Q
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 from echo.models import *
 from echo.serializers.login_serializers import *

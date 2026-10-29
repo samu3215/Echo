@@ -33,6 +33,18 @@ class Usuario(models.Model):
             self.telefono = None
         super().save(*args, **kwargs)
 
+class RecuperacionContrasena(models.Model):
+    usuario = models.OneToOneField(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='recuperacion_contrasena',
+    )
+    codigo_hash = models.CharField(max_length=128, blank=True, default='')
+    codigo_expira_en = models.DateTimeField(blank=True, null=True)
+    token_nonce = models.UUIDField(blank=True, null=True)
+    token_expira_en = models.DateTimeField(blank=True, null=True)
+
+
 class Seguidor(models.Model):
     seguidor = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='siguiendo')
     seguido = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='seguidores')
@@ -152,16 +164,19 @@ class Calificacion(models.Model):
     puntuacion = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     descripcion = models.TextField(blank=True, null=True)
     
-    
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
-    
+    activo = models.BooleanField(default=True)
     usuario_califica = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='calificaciones_dadas')
     usuario_calificado = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='calificaciones_recibidas')
 
     class Meta:
         constraints = [
-            UniqueConstraint(fields=['usuario_califica', 'usuario_calificado'], name='calificacion_unica'),
+            UniqueConstraint(
+                fields=['usuario_califica', 'usuario_calificado'], 
+                condition=Q(activo=True), 
+                name='calificacion_unica_activa'
+            ),
             CheckConstraint(condition=~Q(usuario_califica=F('usuario_calificado')), name='evitar_autocalificacion')
         ]
 
@@ -194,9 +209,11 @@ class Notificacion(models.Model):
     
     usuario_destino = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='notificaciones_recibidas')
     usuario_origen = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='notificaciones_enviadas')
-    
+    activo = models.BooleanField(default=True)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     puntuacion = models.IntegerField(null=True, blank=True)
     leido = models.BooleanField(default=False)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['-fecha_creacion']

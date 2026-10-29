@@ -5,6 +5,7 @@ from .views.usuario_views import *
 from .views.login_views import *
 from .views.publicacion_views import *
 from .views.comunidad_views import *
+from .views.recuperacion_views import *
 from .views.calificacion_views import *
 
 router = DefaultRouter()
@@ -18,5 +19,20 @@ router.register(r'calificaciones', CalificacionViewSet, basename='calificacion')
 urlpatterns = [
     path('api/', include(router.urls)),
     path('api/login/', LoginAPIView.as_view(), name='api_login'), 
+    path(
+        'api/recuperacion/solicitar-codigo/',
+        SolicitarCodigoAPIView.as_view(),
+        name='solicitar_codigo_recuperacion',
+    ),
+    path(
+        'api/recuperacion/verificar-codigo/',
+        VerificarCodigoAPIView.as_view(),
+        name='verificar_codigo_recuperacion',
+    ),
+    path(
+        'api/recuperacion/restablecer-contrasena/',
+        RestablecerContrasenaAPIView.as_view(),
+        name='restablecer_contrasena',
+    ),
    
 ]
