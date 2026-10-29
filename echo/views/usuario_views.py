@@ -80,6 +80,7 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
             )
             return Response({"siguiendo": True}, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['get'], url_path='seguidores')
     def listar_seguidores(self, request, nombre_usuario=None):
         usuario = self.get_object()
         seguidores = Seguidor.objects.filter(seguido=usuario).select_related('seguidor')

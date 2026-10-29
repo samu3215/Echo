@@ -143,7 +143,6 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
 
     def get_lo_sigo(self, obj):
         request = self.context.get('request')
-        # Se asegura de que el request exista y el usuario sea una instancia real de tu modelo Usuario
         if request and hasattr(request, 'user') and isinstance(request.user, Usuario):
             return Seguidor.objects.filter(seguidor=request.user, seguido=obj).exists()
         return False

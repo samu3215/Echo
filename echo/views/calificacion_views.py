@@ -5,14 +5,13 @@ from ..serializers.calificacion_serializers import CalificacionSerializer
 from ..utils.autenticacion import *
 
 class CalificacionViewSet(viewsets.ModelViewSet):
-    queryset = Calificacion.objects.all()
+
     serializer_class = CalificacionSerializer
     authentication_classes = [AutenticacionJWT]
 
     def get_queryset(self):
         return Calificacion.objects.filter(activo=True, usuario_califica__activo=True)
 
-    
     def get_permissions(self):
         if self.action in ['create']:
             return [RequiereToken()]
