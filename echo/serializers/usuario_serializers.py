@@ -133,13 +133,13 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
 
     def get_seguidores_count(self, obj):
         if hasattr(obj, 'seguidores'):
-            return obj.seguidores.count()
-        return Seguidor.objects.filter(seguido=obj).count()
+            return obj.seguidores.filter(seguidor__activo=True).count()
+        return Seguidor.objects.filter(seguido=obj, seguidor__activo=True).count()
 
     def get_seguidos_count(self, obj):
         if hasattr(obj, 'siguiendo'):
-            return obj.siguiendo.count()
-        return Seguidor.objects.filter(seguidor=obj).count()
+            return obj.siguiendo.filter(seguido__activo=True).count()
+        return Seguidor.objects.filter(seguidor=obj, seguido__activo=True).count()
 
     def get_lo_sigo(self, obj):
         request = self.context.get('request')

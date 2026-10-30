@@ -159,15 +159,3 @@ MAILERS = {
 
 DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_HOST_USER")
 
-
-"""import cloudinary #type:ignore
-import cloudinary.uploader #type:ignore
-import cloudinary.api #type:ignore
-import os
-
-cloudinary.config( 
-  cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
-  api_key = os.environ.get('CLOUDINARY_API_KEY'), 
-  api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
-  secure = True
-)"""

@@ -90,7 +90,7 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='seguidores')
     def listar_seguidores(self, request, nombre_usuario=None):
         usuario = self.get_object()
-        seguidores = Seguidor.objects.filter(seguido=usuario).select_related('seguidor')
+        seguidores = Seguidor.objects.filter(seguido=usuario, seguidor__activo=True).select_related('seguidor')
         usuarios_seguidores = [seg.seguidor for seg in seguidores]
         serializer = RegistroUsuarioSerializer(usuarios_seguidores, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -98,7 +98,7 @@ class RegistroUsuarioViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='seguidos')
     def listar_seguidos(self, request, nombre_usuario=None):
         usuario = self.get_object()
-        seguidos = Seguidor.objects.filter(seguidor=usuario).select_related('seguido')
+        seguidos = Seguidor.objects.filter(seguidor=usuario, seguido__activo=True).select_related('seguido')        
         usuarios_seguidos = [seg.seguido for seg in seguidos]
         serializer = RegistroUsuarioSerializer(usuarios_seguidos, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
