@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'echo',
+    
 ]
 
 MIDDLEWARE = [
@@ -145,18 +146,13 @@ CORS_ALLOWED_ORIGINS = [
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
-        "OPTIONS": {
-            "host": os.environ.get("EMAIL_HOST", "smtp.gmail.com"),
-            "port": int(os.environ.get("EMAIL_PORT", 465)),
-            "use_ssl": True,
-            "username": os.environ.get("EMAIL_HOST_USER"),
-            "password": os.environ.get("EMAIL_HOST_PASSWORD"),
-        },
-    }
-}
 
-DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_HOST_USER")
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp-relay.brevo.com"
+EMAIL_PORT = 2525
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = "echobussines1@gmail.com"
 

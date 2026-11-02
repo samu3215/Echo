@@ -7,12 +7,12 @@ from echo.models import *
 from echo.serializers.usuario_serializers import *
 from echo.utils.autenticacion import *
 from echo.utils.tokens import *
-from rest_framework.views import APIView
-from django.core.mail import send_mail
-from django.conf import settings
-from django.utils import timezone
+from rest_framework.views import APIView # type: ignore
+from django.core.mail import send_mail # type: ignore
+from django.conf import settings # type: ignore
+from django.utils import timezone # type: ignore
 from datetime import timedelta
-from django.contrib.auth.hashers import make_password, check_password
+from django.contrib.auth.hashers import make_password, check_password # type: ignore
 import secrets
 
 class RegistroUsuarioViewSet(viewsets.ModelViewSet):

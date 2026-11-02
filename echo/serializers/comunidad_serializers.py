@@ -1,5 +1,5 @@
-from rest_framework import serializers
-from django.utils.html import strip_tags
+from rest_framework import serializers # type: ignore
+from django.utils.html import strip_tags # type: ignore
 from ..models import *
 from .publicacion_serializers import UsuarioBasicoSerializer
 
