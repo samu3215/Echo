@@ -27,7 +27,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -150,8 +150,8 @@ MAILERS = {
         "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
         "OPTIONS": {
             "host": os.environ.get("EMAIL_HOST", "smtp.gmail.com"),
-            "port": int(os.environ.get("EMAIL_PORT", 587)),
-            "use_tls": True,
+            "port": int(os.environ.get("EMAIL_PORT", 465)),
+            "use_ssl": True,
             "username": os.environ.get("EMAIL_HOST_USER"),
             "password": os.environ.get("EMAIL_HOST_PASSWORD"),
         },
